@@ -20,6 +20,8 @@ from .dataset import Corpus, EncodedDataset
 from .download import download
 from .utils import summary, distributed
 
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
+
 
 def setup_distributed(port=29500):
     if not dist.is_available() or not torch.cuda.is_available() or torch.cuda.device_count() <= 1:
@@ -131,7 +133,7 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
     validation_loss = 0
 
     records = [record for v in range(votes) for record in tqdm(loader, desc=f'Preloading data ... {v}',
-                                                               disable=dist.is_available() and dist.get_rank() > 0)]
+                                                               disable=distributed() and dist.get_rank() > 0)]
     records = [[records[v * len(loader) + i] for v in range(votes)] for i in range(len(loader))]
 
     with tqdm(records, desc=desc, disable=distributed() and dist.get_rank() > 0) as loop, torch.no_grad():
@@ -169,7 +171,8 @@ def _all_reduce_dict(d, device):
     output_d = {}
     for (key, value) in sorted(d.items()):
         tensor_input = torch.tensor([[value]]).to(device)
-        torch.distributed.all_reduce(tensor_input)
+        if distributed():
+            torch.distributed.all_reduce(tensor_input)
         output_d[key] = tensor_input.item()
     return output_d
 

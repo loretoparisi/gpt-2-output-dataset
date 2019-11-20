@@ -59,4 +59,7 @@ def grad_norm(model: nn.Module):
     return total_norm ** 0.5
 
 def distributed():
-    return dist.is_available() and dist.is_initialized()
+    try:
+        return dist.is_available() and dist.is_initialized()
+    except:
+        return False
